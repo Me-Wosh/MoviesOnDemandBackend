@@ -18,10 +18,17 @@ public class ErrorHandlingMiddleware : IMiddleware
             await context.Response.WriteAsync(notFoundException.Message);
         }
 
+        catch (BadRequestException badRequest)
+        {
+            context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
+            await context.Response.WriteAsync(badRequest.Message);
+        }
+        
         catch (Exception e)
         {
-            context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
-            await context.Response.WriteAsync("Something went wrong.");
+            //context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+            //await context.Response.WriteAsync("Something went wrong.");
+            Console.Write(e);
         }
     }
 }
