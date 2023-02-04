@@ -1,5 +1,3 @@
-using MoviesOnDemandBackend.Models;
-
 namespace MoviesOnDemandBackend.Entities;
 
 public class User
@@ -10,5 +8,5 @@ public class User
     public byte[] PasswordHash { get; set; }
     public byte[] PasswordSalt { get; set; }
     public string Role { get; set; }
-    public List<MovieDto> LikedMovies { get; set; }
+    public ICollection<Movie> FavoriteMovies { get; set; }
 }

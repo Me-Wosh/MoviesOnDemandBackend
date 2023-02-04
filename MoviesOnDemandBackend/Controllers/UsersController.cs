@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MoviesOnDemandBackend.Entities;
 using MoviesOnDemandBackend.Models;
@@ -30,5 +31,19 @@ public class UsersController : ControllerBase
         var token = _usersService.Login(userLoginDto);
 
         return Ok(token);
+    }
+
+    [HttpPost("LikeMovie/{id}"), Authorize(Roles = "user")]
+    public ActionResult<UserDto> LikeMovie([FromRoute] int id)
+    {
+        var user = _usersService.LikeMovie(id);
+        return Ok(user);
+    }
+
+    [HttpDelete("DislikeMovie/{id}"), Authorize(Roles = "user")]
+    public ActionResult<UserDto> DislikeMovie([FromRoute] int id)
+    {
+        var user = _usersService.DislikeMovie(id);
+        return Ok(user);
     }
 }

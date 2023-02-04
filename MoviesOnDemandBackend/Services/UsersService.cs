@@ -1,7 +1,9 @@
+using System.Collections.ObjectModel;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using AutoMapper;
 using Microsoft.IdentityModel.Tokens;
 using MoviesOnDemandBackend.Entities;
 using MoviesOnDemandBackend.Exceptions;
@@ -13,16 +15,22 @@ public interface IUsersService
 {
     User Register(UserRegisterDto userRegisterDto);
     string Login(UserLoginDto userLoginDto);
+    UserDto LikeMovie(int id);
+    UserDto DislikeMovie(int id);
 }
 
 public class UsersService : IUsersService
 {
     private readonly IConfiguration _configuration;
+    private readonly MoviesOnDemandDbContext _dbContext;
+    private readonly IMapper _mapper;
     private static readonly User User = new User();
-    
-    public UsersService(IConfiguration configuration)
+
+    public UsersService(IConfiguration configuration, MoviesOnDemandDbContext dbContext, IMapper mapper)
     {
         _configuration = configuration;
+        _dbContext = dbContext;
+        _mapper = mapper;
     }
     
     public User Register(UserRegisterDto userRegisterDto)
@@ -34,9 +42,9 @@ public class UsersService : IUsersService
         User.PasswordSalt = passwordSalt;
         User.Role = "user";
 
-        return (User);
+        return User;
     }
-
+    
     public string Login(UserLoginDto userLoginDto)
     {
         if (!userLoginDto.Username.Equals(User.Username))
@@ -46,8 +54,57 @@ public class UsersService : IUsersService
             throw new BadRequestException("Wrong password");
 
         string token = CreateToken(User);
-        
+
         return token;
+    }
+    
+    public UserDto LikeMovie(int id)
+    {
+        var dbMovie = _dbContext.Movies.FirstOrDefault(m => m.Id == id);
+        UserDto user;
+
+        if (dbMovie is null)
+        {
+            throw new NotFoundException("Movie does not exist");
+        }
+        
+        if (User.FavoriteMovies is null)
+        {
+            User.FavoriteMovies = new Collection<Movie>();
+            User.FavoriteMovies.Add(dbMovie);
+
+            user = _mapper.Map<User, UserDto>(User);
+
+            return user;
+        }
+
+        if (User.FavoriteMovies.Contains(User.FavoriteMovies.FirstOrDefault(fav => fav.Id == dbMovie.Id)))
+        {
+             user = _mapper.Map<User, UserDto>(User);
+             return user;
+        }
+
+        User.FavoriteMovies.Add(dbMovie);
+
+        user = _mapper.Map<User, UserDto>(User);
+
+        return user;
+    }
+
+    public UserDto DislikeMovie(int id)
+    {
+        var movie = User.FavoriteMovies.FirstOrDefault(m => m.Id == id);
+
+        if (movie is null)
+        { 
+            throw new NotFoundException("User hasn't liked such movie");
+        }
+        
+        User.FavoriteMovies.Remove(movie);
+
+        UserDto user = _mapper.Map<User, UserDto>(User);
+
+        return user;
     }
 
     private void CreatePasswordHash(string password, out byte[] passwordHash, out byte[] passwordSalt)
