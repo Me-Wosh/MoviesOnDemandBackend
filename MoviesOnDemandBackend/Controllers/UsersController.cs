@@ -46,4 +46,11 @@ public class UsersController : ControllerBase
         var user = _usersService.DislikeMovie(id);
         return Ok(user);
     }
+
+    [HttpPost("RefreshToken")]
+    public ActionResult<string> RefreshToken()
+    {
+        var token = _usersService.RefreshToken();
+        return Ok(token);
+    }
 }

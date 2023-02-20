@@ -9,4 +9,7 @@ public class User
     public byte[] PasswordSalt { get; set; }
     public string Role { get; set; }
     public ICollection<Movie> FavoriteMovies { get; set; }
+    public string RefreshToken { get; set; }
+    public DateTime RefreshTokenCreated { get; set; }
+    public DateTime RefreshTokenExpires { get; set; }
 }

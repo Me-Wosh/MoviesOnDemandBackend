@@ -15,6 +15,7 @@ public interface IUsersService
 {
     User Register(UserRegisterDto userRegisterDto);
     string Login(UserLoginDto userLoginDto);
+    string RefreshToken();
     UserDto LikeMovie(int id);
     UserDto DislikeMovie(int id);
 }
@@ -23,13 +24,20 @@ public class UsersService : IUsersService
 {
     private readonly IConfiguration _configuration;
     private readonly MoviesOnDemandDbContext _dbContext;
+    private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly IMapper _mapper;
     private static readonly User User = new User();
 
-    public UsersService(IConfiguration configuration, MoviesOnDemandDbContext dbContext, IMapper mapper)
+    public UsersService(
+        IConfiguration configuration, 
+        MoviesOnDemandDbContext dbContext, 
+        IHttpContextAccessor httpContextAccessor, 
+        IMapper mapper)
     {
         _configuration = configuration;
         _dbContext = dbContext;
+        _httpContextAccessor = httpContextAccessor;
+
         _mapper = mapper;
     }
     
@@ -54,6 +62,30 @@ public class UsersService : IUsersService
             throw new BadRequestException("Wrong password");
 
         string token = CreateToken(User);
+
+        var refreshToken = GenerateRefreshToken();
+        SetRefreshToken(refreshToken);
+
+        return token;
+    }
+
+    public string RefreshToken()
+    {
+        var refreshToken = _httpContextAccessor.HttpContext?.Request.Cookies["refreshToken"];
+
+        if (!User.RefreshToken.Equals(refreshToken))
+        {
+            throw new UnauthorizedException("Invalid refresh token");
+        }
+        
+        if (User.RefreshTokenExpires < DateTime.Now)
+        {
+            throw new UnauthorizedException("Refresh token expired");
+        }
+
+        string token = CreateToken(User);
+        var newRefreshToken = GenerateRefreshToken();
+        SetRefreshToken(newRefreshToken);
 
         return token;
     }
@@ -140,12 +172,42 @@ public class UsersService : IUsersService
 
         var token = new JwtSecurityToken(
             claims: claims,
-            expires: DateTime.Now.AddDays(1),
+            expires: DateTime.Now.AddMinutes(10),
             signingCredentials: creds
             );
 
         var jwt = new JwtSecurityTokenHandler().WriteToken(token);
         
         return jwt;
+    }
+
+    private RefreshToken GenerateRefreshToken()
+    {
+        var refreshToken = new RefreshToken
+        {
+            Token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64)),
+            DateCreated = DateTime.Now,
+            DateExpires = DateTime.Now.AddDays(7)
+        };
+
+        User.RefreshToken = refreshToken.Token;
+        User.RefreshTokenCreated = refreshToken.DateCreated;
+        User.RefreshTokenExpires = refreshToken.DateExpires;
+
+        return refreshToken;
+    }
+
+    private void SetRefreshToken(RefreshToken refreshToken)
+    {
+        var cookieOptions = new CookieOptions
+        {
+            HttpOnly = true,
+            Expires = refreshToken.DateExpires
+        };
+
+        _httpContextAccessor.HttpContext?.Response.Cookies.Append(
+            "refreshToken", 
+            refreshToken.Token, 
+            cookieOptions);
     }
 }
