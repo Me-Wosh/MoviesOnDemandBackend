@@ -32,8 +32,8 @@ public class ErrorHandlingMiddleware : IMiddleware
         
         catch (Exception e)
         {
-            //context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
-            //await context.Response.WriteAsync("Something went wrong.");
+            context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+            await context.Response.WriteAsync("Something went wrong.");
             Console.Write(e);
         }
     }

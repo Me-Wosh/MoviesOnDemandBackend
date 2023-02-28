@@ -4,6 +4,7 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using AutoMapper;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using MoviesOnDemandBackend.Entities;
 using MoviesOnDemandBackend.Exceptions;
@@ -13,11 +14,11 @@ namespace MoviesOnDemandBackend.Services;
 
 public interface IUsersService
 {
-    User Register(UserRegisterDto userRegisterDto);
+    int Register(UserRegisterDto userRegisterDto);
     string Login(UserLoginDto userLoginDto);
-    string RefreshToken();
-    UserDto LikeMovie(int id);
-    UserDto DislikeMovie(int id);
+    string RefreshToken(int id);
+    void LikeMovie(int userId, int movieId);
+    void DislikeMovie(int userId, int movieId);
 }
 
 public class UsersService : IUsersService
@@ -26,7 +27,6 @@ public class UsersService : IUsersService
     private readonly MoviesOnDemandDbContext _dbContext;
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly IMapper _mapper;
-    private static readonly User User = new User();
 
     public UsersService(
         IConfiguration configuration, 
@@ -37,106 +37,147 @@ public class UsersService : IUsersService
         _configuration = configuration;
         _dbContext = dbContext;
         _httpContextAccessor = httpContextAccessor;
-
         _mapper = mapper;
     }
     
-    public User Register(UserRegisterDto userRegisterDto)
+    public int Register(UserRegisterDto userRegisterDto)
     {
-        CreatePasswordHash(userRegisterDto.Password, out byte[] passwordHash, out byte[] passwordSalt);
-        User.Email = userRegisterDto.Email;
-        User.Username = userRegisterDto.Username;
-        User.PasswordHash = passwordHash;
-        User.PasswordSalt = passwordSalt;
-        User.Role = "user";
+        var dbUser = _dbContext.Users.SingleOrDefault(u => u.Email == userRegisterDto.Email);
+        
+        if (dbUser is not null)
+        {
+            throw new BadRequestException("User already exists");
+        }
 
-        return User;
+        dbUser = _dbContext.Users.SingleOrDefault(u => u.Username == userRegisterDto.Username);
+
+        if (dbUser is not null)
+        {
+            throw new BadRequestException("Username already taken");
+        }
+
+        var user = _mapper.Map<UserRegisterDto, User>(userRegisterDto);
+        user.AccountCreated = DateTime.Today;
+        
+        CreatePasswordHash(userRegisterDto.Password, out byte[] passwordHash, out byte[] passwordSalt);
+        
+        user.PasswordHash = passwordHash;
+        user.PasswordSalt = passwordSalt;
+
+        _dbContext.Users.Add(user);
+        _dbContext.SaveChanges();
+
+        return user.Id;
     }
     
     public string Login(UserLoginDto userLoginDto)
     {
-        if (!userLoginDto.Username.Equals(User.Username))
+        var user = _dbContext.Users.SingleOrDefault(u => u.Email == userLoginDto.Email);
+        
+        if (user is null)
             throw new NotFoundException("User not found");
 
-        if (!VerifyPasswordHash(userLoginDto.Password, User.PasswordHash, User.PasswordSalt))
+        if (!VerifyPasswordHash(userLoginDto.Password, user.PasswordHash, user.PasswordSalt))
             throw new BadRequestException("Wrong password");
 
-        string token = CreateToken(User);
+        string token = CreateToken(user);
 
-        var refreshToken = GenerateRefreshToken();
+        var refreshToken = GenerateRefreshToken(user);
         SetRefreshToken(refreshToken);
 
         return token;
     }
 
-    public string RefreshToken()
+    public string RefreshToken(int id)
     {
+        var user = _dbContext
+            .Users
+            .Include(u => u.RefreshToken)
+            .Single(u => u.Id == id);
+        
         var refreshToken = _httpContextAccessor.HttpContext?.Request.Cookies["refreshToken"];
 
-        if (!User.RefreshToken.Equals(refreshToken))
+        if (!user.RefreshToken.Token.Equals(refreshToken))
         {
             throw new UnauthorizedException("Invalid refresh token");
         }
         
-        if (User.RefreshTokenExpires < DateTime.Now)
+        if (user.RefreshToken.Expires < DateTime.Now)
         {
             throw new UnauthorizedException("Refresh token expired");
         }
 
-        string token = CreateToken(User);
-        var newRefreshToken = GenerateRefreshToken();
+        string token = CreateToken(user);
+        var newRefreshToken = GenerateRefreshToken(user);
         SetRefreshToken(newRefreshToken);
 
         return token;
     }
     
-    public UserDto LikeMovie(int id)
+    public void LikeMovie(int userId, int movieId)
     {
-        var dbMovie = _dbContext.Movies.FirstOrDefault(m => m.Id == id);
-        UserDto user;
+        var movie = _dbContext.Movies.SingleOrDefault(m => m.Id == movieId);
+        
+        var user = _dbContext
+            .Users
+            .Include(u => u.FavoriteMovies)
+            .SingleOrDefault(u => u.Id == userId);
+        
+        var userMovies = _dbContext
+            .Users
+            .SelectMany(u => u.FavoriteMovies)
+            .ToHashSet();
 
-        if (dbMovie is null)
+        if (movie is null)
         {
             throw new NotFoundException("Movie does not exist");
         }
+
+        if (user is null)
+        {
+            throw new NotFoundException("User not found");
+        }
+
+        if (userMovies.Contains(movie))
+        {
+            throw new BadRequestException("User has already liked given movie");
+        }
         
-        if (User.FavoriteMovies is null)
-        {
-            User.FavoriteMovies = new Collection<Movie>();
-            User.FavoriteMovies.Add(dbMovie);
-
-            user = _mapper.Map<User, UserDto>(User);
-
-            return user;
-        }
-
-        if (User.FavoriteMovies.Contains(User.FavoriteMovies.FirstOrDefault(fav => fav.Id == dbMovie.Id)))
-        {
-             user = _mapper.Map<User, UserDto>(User);
-             return user;
-        }
-
-        User.FavoriteMovies.Add(dbMovie);
-
-        user = _mapper.Map<User, UserDto>(User);
-
-        return user;
+        user.FavoriteMovies.Add(movie);
+        _dbContext.SaveChanges();
     }
 
-    public UserDto DislikeMovie(int id)
+    public void DislikeMovie(int userId, int movieId)
     {
-        var movie = User.FavoriteMovies.FirstOrDefault(m => m.Id == id);
+        var movie = _dbContext.Movies.SingleOrDefault(m => m.Id == movieId);
+        
+        var user = _dbContext
+            .Users
+            .Include(u => u.FavoriteMovies)
+            .SingleOrDefault(u => u.Id == userId);
+        
+        var userMovies = _dbContext
+            .Users
+            .SelectMany(u => u.FavoriteMovies)
+            .ToHashSet();
 
         if (movie is null)
-        { 
-            throw new NotFoundException("User hasn't liked such movie");
+        {
+            throw new NotFoundException("Movie not found");
         }
         
-        User.FavoriteMovies.Remove(movie);
+        if (user is null)
+        { 
+            throw new NotFoundException("User not found");
+        }
 
-        UserDto user = _mapper.Map<User, UserDto>(User);
+        if (!userMovies.Contains(movie))
+        {
+            throw new NotFoundException("User has not liked such movie");
+        }
 
-        return user;
+        user.FavoriteMovies.Remove(movie);
+        _dbContext.SaveChanges();
     }
 
     private void CreatePasswordHash(string password, out byte[] passwordHash, out byte[] passwordSalt)
@@ -181,18 +222,31 @@ public class UsersService : IUsersService
         return jwt;
     }
 
-    private RefreshToken GenerateRefreshToken()
+    private RefreshToken GenerateRefreshToken(User user)
     {
+        var dbRefreshToken = _dbContext.RefreshTokens.SingleOrDefault(r => r.UserId == user.Id);
+        
         var refreshToken = new RefreshToken
         {
             Token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64)),
-            DateCreated = DateTime.Now,
-            DateExpires = DateTime.Now.AddDays(7)
+            Created = DateTime.Now,
+            Expires = DateTime.Now.AddDays(7),
+            UserId = user.Id
         };
 
-        User.RefreshToken = refreshToken.Token;
-        User.RefreshTokenCreated = refreshToken.DateCreated;
-        User.RefreshTokenExpires = refreshToken.DateExpires;
+        if (dbRefreshToken is null)
+        {
+            _dbContext.RefreshTokens.Add(refreshToken);
+        }
+        
+        else
+        {
+            dbRefreshToken.Token = refreshToken.Token;
+            dbRefreshToken.Created = refreshToken.Created;
+            dbRefreshToken.Expires = refreshToken.Expires;
+        }
+        
+        _dbContext.SaveChanges();
 
         return refreshToken;
     }
@@ -202,7 +256,7 @@ public class UsersService : IUsersService
         var cookieOptions = new CookieOptions
         {
             HttpOnly = true,
-            Expires = refreshToken.DateExpires
+            Expires = refreshToken.Expires
         };
 
         _httpContextAccessor.HttpContext?.Response.Cookies.Append(
