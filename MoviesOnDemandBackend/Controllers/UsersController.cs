@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using MoviesOnDemandBackend.Entities;
 using MoviesOnDemandBackend.Models;
 using MoviesOnDemandBackend.Services;
 
@@ -18,11 +17,11 @@ public class UsersController : ControllerBase
     }
     
     [HttpPost("Register")]
-    public ActionResult<User> Register([FromBody] UserRegisterDto userRegisterDto)
+    public ActionResult<int> Register([FromBody] UserRegisterDto userRegisterDto)
     {
-        var user = _usersService.Register(userRegisterDto);
+        var userId = _usersService.Register(userRegisterDto);
 
-        return Ok(user);
+        return Ok(userId);
     }
 
     [HttpPost("Login")]
@@ -33,17 +32,26 @@ public class UsersController : ControllerBase
         return Ok(token);
     }
 
-    [HttpPost("LikeMovie/{id}"), Authorize(Roles = "user")]
-    public ActionResult<UserDto> LikeMovie([FromRoute] int id)
+    [HttpPost("{userId}/LikeMovie/{movieId}"), Authorize(Roles = "user")]
+    public ActionResult<string> LikeMovie([FromRoute] int userId, [FromRoute] int movieId)
     {
-        var user = _usersService.LikeMovie(id);
-        return Ok(user);
+        _usersService.LikeMovie(userId, movieId);
+        
+        return Ok("Movie successfully liked");
     }
 
-    [HttpDelete("DislikeMovie/{id}"), Authorize(Roles = "user")]
-    public ActionResult<UserDto> DislikeMovie([FromRoute] int id)
+    [HttpDelete("{userId}/DislikeMovie/{movieId}"), Authorize(Roles = "user")]
+    public ActionResult<string> DislikeMovie([FromRoute] int userId, [FromRoute] int movieId)
     {
-        var user = _usersService.DislikeMovie(id);
-        return Ok(user);
+        _usersService.DislikeMovie(userId, movieId);
+        
+        return Ok("Movie disliked");
+    }
+
+    [HttpPost("{id}/RefreshToken")]
+    public ActionResult<string> RefreshToken([FromRoute] int id)
+    {
+        var token = _usersService.RefreshToken(id);
+        return Ok(token);
     }
 }

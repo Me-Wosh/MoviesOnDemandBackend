@@ -28,6 +28,7 @@ builder.Services.AddDbContext<MoviesOnDemandDbContext>(options =>
 {
     options.UseSqlServer(builder.Configuration.GetConnectionString("MoviesOnDemandDB"));
 });
+builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ErrorHandlingMiddleware>();
 builder.Services.AddScoped<IMoviesService, MoviesService>();
 builder.Services.AddScoped<IUsersService, UsersService>();

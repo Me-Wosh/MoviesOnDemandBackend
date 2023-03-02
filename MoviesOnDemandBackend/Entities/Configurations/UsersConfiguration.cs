@@ -34,5 +34,10 @@ public class UsersConfiguration : IEntityTypeConfiguration<User>
             .Property(u => u.Role)
             .HasDefaultValue("user")
             .IsRequired();
+
+        builder
+            .Property(u => u.AccountCreated)
+            .HasColumnType("Date")
+            .IsRequired();
     }
 }

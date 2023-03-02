@@ -23,11 +23,17 @@ public class ErrorHandlingMiddleware : IMiddleware
             context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
             await context.Response.WriteAsync(badRequest.Message);
         }
+
+        catch (UnauthorizedException unauthorizedException)
+        {
+            context.Response.StatusCode = (int)HttpStatusCode.Unauthorized;
+            await context.Response.WriteAsync(unauthorizedException.Message);
+        }
         
         catch (Exception e)
         {
-            //context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
-            //await context.Response.WriteAsync("Something went wrong.");
+            context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+            await context.Response.WriteAsync("Something went wrong.");
             Console.Write(e);
         }
     }

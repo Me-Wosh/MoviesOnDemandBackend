@@ -8,5 +8,7 @@ public class User
     public byte[] PasswordHash { get; set; }
     public byte[] PasswordSalt { get; set; }
     public string Role { get; set; }
+    public DateTime AccountCreated { get; set; }
     public ICollection<Movie> FavoriteMovies { get; set; }
+    public RefreshToken RefreshToken { get; set; }
 }
