@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -39,5 +41,30 @@ public class UsersConfiguration : IEntityTypeConfiguration<User>
             .Property(u => u.AccountCreated)
             .HasColumnType("Date")
             .IsRequired();
+
+        HashPassword("admin123", out byte[] hash, out byte[] salt);
+        
+        builder
+            .HasData(
+                new User
+                {
+                    Id = 1,
+                    Email = "admin@mod.com",
+                    Username = "admin",
+                    PasswordHash = hash,
+                    PasswordSalt = salt,
+                    Role = "admin",
+                    AccountCreated = DateTime.Today
+                }
+            );
+    }
+
+    private void HashPassword(string password, out byte[] hash, out byte[] salt)
+    {
+        using (var hmac = new HMACSHA512())
+        {
+            salt = hmac.Key;
+            hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(password));
+        }
     }
 }
