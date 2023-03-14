@@ -30,8 +30,11 @@ builder.Services.AddDbContext<MoviesOnDemandDbContext>(options =>
 });
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ErrorHandlingMiddleware>();
+builder.Services.AddScoped<IAccountManagingService, AccountManagingService>();
+builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
 builder.Services.AddScoped<IMoviesService, MoviesService>();
-builder.Services.AddScoped<IUsersService, UsersService>();
+builder.Services.AddScoped<IRegistrationService, RegistrationService>();
+builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();

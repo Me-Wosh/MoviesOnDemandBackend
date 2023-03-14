@@ -7,8 +7,5 @@ public class UserDto
     public string Username { get; set; }
     public string Role { get; set; }
     public DateTime AccountCreated { get; set; }
-    public List<MovieDto> FavoriteMovies { get; set; }
-    public string RefreshToken { get; set; }
-    public DateTime RefreshTokenCreated { get; set; }
-    public DateTime RefreshTokenExpires { get; set; }
+    public HashSet<MovieDto> FavoriteMovies { get; set; }
 }
