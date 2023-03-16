@@ -28,22 +28,6 @@ public class MoviesConfiguration : IEntityTypeConfiguration<Movie>
             .IsRequired();
 
         builder
-            .Property(m => m.Rating)
-            .HasPrecision(2,1)
-            .HasDefaultValue(0)
-            .IsRequired();
-
-        builder
-            .Property(m => m.SumOfRatings)
-            .HasDefaultValue(0)
-            .IsRequired();
-
-        builder
-            .Property(m => m.NumberOfRatings)
-            .HasDefaultValue(0)
-            .IsRequired();
-        
-        builder
             .HasData(
                 new Movie
                 {
