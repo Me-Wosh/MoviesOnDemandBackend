@@ -30,7 +30,7 @@ builder.Services.AddDbContext<MoviesOnDemandDbContext>(options =>
 });
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ErrorHandlingMiddleware>();
-builder.Services.AddScoped<IAccountManagingService, AccountManagingService>();
+builder.Services.AddScoped<IAccountService, AccountService>();
 builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
 builder.Services.AddScoped<IMoviesService, MoviesService>();
 builder.Services.AddScoped<IRegistrationService, RegistrationService>();

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using MoviesOnDemandBackend.Models;
 using MoviesOnDemandBackend.Services;
 
 namespace MoviesOnDemandBackend.Controllers;
@@ -29,6 +30,14 @@ public class UserController : ControllerBase
     {
         var status = _usersService.DislikeMovie(movieId);
         
+        return Ok(status);
+    }
+
+    [HttpPost("RateMovie")]
+    public ActionResult<string> RateMovie([FromBody] MovieRating rating)
+    {
+        var status = _usersService.RateMovie(rating);
+
         return Ok(status);
     }
 }

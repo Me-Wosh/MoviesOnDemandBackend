@@ -154,7 +154,7 @@ public class AuthenticationService : IAuthenticationService
             _dbContext.RefreshTokens.Add(refreshToken);
         }
         
-        else
+        if (dbRefreshToken is not null)
         {
             dbRefreshToken.Token = refreshToken.Token;
             dbRefreshToken.Created = refreshToken.Created;
