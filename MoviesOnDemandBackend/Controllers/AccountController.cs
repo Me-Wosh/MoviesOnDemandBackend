@@ -10,18 +10,26 @@ namespace MoviesOnDemandBackend.Controllers;
 [Route("/Api/[Controller]/V1")]
 public class AccountController : ControllerBase
 {
-    private readonly IAccountManagingService _accountManagingService;
+    private readonly IAccountService _accountService;
 
-    public AccountController(IAccountManagingService accountManagingService)
+    public AccountController(IAccountService accountService)
     {
-        _accountManagingService = accountManagingService;
+        _accountService = accountService;
     }
 
     [HttpGet("Me")]
     public ActionResult<UserDto> GetCurrentUser()
     {
-        var userDto = _accountManagingService.GetCurrentUser();
+        var userDto = _accountService.GetCurrentUser();
 
-        return userDto;
+        return Ok(userDto);
+    }
+
+    [HttpGet("FavoriteMovies")]
+    public ActionResult<IEnumerable<MovieDto>> GetFavoriteMovies()
+    {
+        var movieDtos = _accountService.GetUserFavoriteMovies();
+
+        return Ok(movieDtos);
     }
 }

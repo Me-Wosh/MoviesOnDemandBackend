@@ -36,7 +36,7 @@ public class RegistrationService : IRegistrationService
 
         if (dbUser is not null)
         {
-            throw new BadRequestException("Username already taken");
+            throw new BadRequestException("Username taken");
         }
 
         var user = _mapper.Map<UserRegisterDto, User>(userRegisterDto);
