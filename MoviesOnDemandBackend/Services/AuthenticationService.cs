@@ -21,20 +21,17 @@ public class AuthenticationService : IAuthenticationService
 {
     private readonly IConfiguration _configuration;
     private readonly IHttpContextAccessor _httpContextAccessor;
-    private readonly IMapper _mapper;
     private readonly MoviesOnDemandDbContext _dbContext;
 
     public AuthenticationService
     (
         IConfiguration configuration, 
         IHttpContextAccessor httpContextAccessor,
-        IMapper mapper,
         MoviesOnDemandDbContext dbContext
     )
     {
         _configuration = configuration;
         _httpContextAccessor = httpContextAccessor;
-        _mapper = mapper;
         _dbContext = dbContext;
     }
     
@@ -50,11 +47,9 @@ public class AuthenticationService : IAuthenticationService
         if (!VerifyPasswordHash(userLoginDto.Password, user.PasswordHash, user.PasswordSalt))
             throw new BadRequestException("Wrong password");
 
-        var userDto = _mapper.Map<User, UserDto>(user);
+        string token = CreateToken(user);
 
-        string token = CreateToken(userDto);
-
-        var refreshToken = GenerateRefreshToken(userDto);
+        var refreshToken = GenerateRefreshToken(user);
         SetRefreshToken(refreshToken);
 
         return token;
@@ -90,19 +85,16 @@ public class AuthenticationService : IAuthenticationService
 
         var user = _dbContext
             .Users
-            .Include(u => u.RefreshToken)
             .Single(u => u.RefreshToken.Id == dbRefreshToken.Id);
 
-        var userDto = _mapper.Map<User, UserDto>(user);
-
-        string token = CreateToken(userDto);
-        var newRefreshToken = GenerateRefreshToken(userDto);
+        string token = CreateToken(user);
+        var newRefreshToken = GenerateRefreshToken(user);
         SetRefreshToken(newRefreshToken);
 
         return token;
     }
     
-    private bool VerifyPasswordHash(string password, byte[] passwordHash, byte[] passwordSalt)
+    public bool VerifyPasswordHash(string password, byte[] passwordHash, byte[] passwordSalt)
     {
         using (var hmac = new HMACSHA512(passwordSalt))
         {
@@ -111,15 +103,15 @@ public class AuthenticationService : IAuthenticationService
         }
     }
 
-    private string CreateToken(UserDto userDto)
+    private string CreateToken(User user)
     {
         List<Claim> claims = new List<Claim>
         {
-            new Claim("AccountCreated", userDto.AccountCreated.ToString()),
-            new Claim(ClaimTypes.NameIdentifier, userDto.Id.ToString()),
-            new Claim(ClaimTypes.Email, userDto.Email),
-            new Claim(ClaimTypes.Name, userDto.Username),
-            new Claim(ClaimTypes.Role, userDto.Role)
+            new Claim("AccountCreated", user.AccountCreated.ToString()),
+            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+            new Claim(ClaimTypes.Email, user.Email),
+            new Claim(ClaimTypes.Name, user.Username),
+            new Claim(ClaimTypes.Role, user.Role)
         };
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration.GetSection("Token").Value));
@@ -137,16 +129,16 @@ public class AuthenticationService : IAuthenticationService
         return jwt;
     }
 
-    private RefreshToken GenerateRefreshToken(UserDto userDto)
+    private RefreshToken GenerateRefreshToken(User user)
     {
-        var dbRefreshToken = _dbContext.RefreshTokens.SingleOrDefault(r => r.UserId == userDto.Id);
+        var dbRefreshToken = _dbContext.RefreshTokens.SingleOrDefault(r => r.UserId == user.Id);
         
         var refreshToken = new RefreshToken
         {
             Token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64)),
             Created = DateTime.Now,
             Expires = DateTime.Now.AddDays(7),
-            UserId = userDto.Id
+            UserId = user.Id
         };
 
         if (dbRefreshToken is null)
