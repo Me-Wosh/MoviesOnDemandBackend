@@ -25,16 +25,22 @@ public class RegistrationService : IRegistrationService
 
     public UserDto Register(UserRegisterDto userRegisterDto)
     {
-        var dbUser = _dbContext.Users.SingleOrDefault(u => u.Email == userRegisterDto.Email);
+        var email = _dbContext
+            .Users
+            .Select(u => u.Email)
+            .SingleOrDefault(e => e.Equals(userRegisterDto.Email));
         
-        if (dbUser is not null)
+        if (email is not null)
         {
             throw new BadRequestException("User already exists");
         }
 
-        dbUser = _dbContext.Users.SingleOrDefault(u => u.Username == userRegisterDto.Username);
+        var username = _dbContext
+            .Users
+            .Select(u => u.Username)
+            .SingleOrDefault(u => u.Equals(userRegisterDto.Username));
 
-        if (dbUser is not null)
+        if (username is not null)
         {
             throw new BadRequestException("Username taken");
         }
