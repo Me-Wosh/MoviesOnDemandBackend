@@ -24,8 +24,7 @@ public class MoviesConfiguration : IEntityTypeConfiguration<Movie>
 
         builder
             .Property(m => m.Year)
-            .HasMaxLength(4)
-            .IsRequired();
+            .HasMaxLength(4);
 
         builder
             .HasData(
