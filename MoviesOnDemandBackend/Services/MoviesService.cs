@@ -37,13 +37,11 @@ public class MoviesService : IMoviesService
 
         for (var i = 0; i < movieDtos.Count; i++)
         {
-            if (movies[i].Ratings.Count == 0)
+            if (movies[i].Ratings.Count > 0)
             {
-                continue;
+                movieDtos[i].Rating = decimal.Round(Convert.ToDecimal(movies[i].Ratings.Sum(r => r.Value))
+                                                    / Convert.ToDecimal(movies[i].Ratings.Count), 1);
             }
-
-            movieDtos[i].Rating = decimal.Round(Convert.ToDecimal(movies[i].Ratings.Sum(r => r.Value)) 
-                                                / Convert.ToDecimal(movies[i].Ratings.Count), 1);
         }
         
         return movieDtos;
@@ -59,14 +57,14 @@ public class MoviesService : IMoviesService
         if (movie is null)
             throw new NotFoundException($"Movie of given id: {id} not found.");
 
-        var movieDto = _mapper.Map<Movie, MovieDto>(movie); 
-        
-        if (movie.Ratings.Count != 0)
+        var movieDto = _mapper.Map<Movie, MovieDto>(movie);
+
+        if (movie.Ratings.Count > 0)
         {
             movieDto.Rating = decimal.Round(Convert.ToDecimal(movie.Ratings.Sum(r => r.Value)) 
-                                                / Convert.ToDecimal(movie.Ratings.Count), 1);    
+                                            / Convert.ToDecimal(movie.Ratings.Count), 1);
         }
-
+        
         return movieDto;
     }
     
