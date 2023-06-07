@@ -8,4 +8,6 @@ A simple project to test current skills of creating backend in .NET as well as t
 * Azure SQL Edge (T-SQL)
 * AutoMapper
 * Entity Framework
+* JWT
+* xUnit
 
